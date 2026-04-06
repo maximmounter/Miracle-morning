@@ -1,4 +1,9 @@
 /* ── Constants ── */
+
+// 👇 Paste your Anthropic API key here
+// Get one free at: https://console.anthropic.com/
+const API_KEY = 'YOUR_API_KEY_HERE';
+
 const SYSTEM_PROMPT = `You are Dawn, an upbeat and practical morning coach. The user currently wakes up at 8:00 AM and wants to wake up at 6:30 AM. You've created a morning routine for them starting at 6:30 AM: wake + hydrate, light stretching, shower, get dressed, breakfast, plan the day, then start the day at 7:30 AM.
 
 Your job: help them actually make this transition succeed. Give practical, science-backed advice about sleep schedules, alarm strategies, circadian rhythm, evening wind-down routines, and staying motivated. Be warm, encouraging, and concise. Never be preachy. Keep replies under 120 words unless the user clearly wants more detail. Use simple language.`;
@@ -67,7 +72,12 @@ async function sendMessage() {
   try {
     const response = await fetch(API_URL, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': API_KEY,
+        'anthropic-version': '2023-06-01',
+        'anthropic-dangerous-direct-browser-access': 'true',
+      },
       body: JSON.stringify({
         model: 'claude-sonnet-4-20250514',
         max_tokens: 1000,
