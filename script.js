@@ -51,6 +51,12 @@ async function sendMessage() {
   const text = chatInput.value.trim();
   if (!text) return;
 
+  // Check API key before doing anything
+  if (!API_KEY || API_KEY === 'YOUR_API_KEY_HERE') {
+    appendMessage('ai', "⚠️ No API key set! Open script.js and replace 'YOUR_API_KEY_HERE' at the top with your real key from console.anthropic.com");
+    return;
+  }
+
   // Clear input
   chatInput.value = '';
   chatInput.style.height = 'auto';
@@ -86,6 +92,12 @@ async function sendMessage() {
       }),
     });
 
+    if (!response.ok) {
+      const errData = await response.json().catch(() => ({}));
+      const reason = errData?.error?.message || 'HTTP ' + response.status;
+      throw new Error(reason);
+    }
+
     const data = await response.json();
     const reply = data.content
       .filter((block) => block.type === 'text')
@@ -99,7 +111,18 @@ async function sendMessage() {
   } catch (err) {
     console.error('API error:', err);
     removeTyping(typingId);
-    appendMessage('ai', "Sorry, I couldn't connect right now. Try again in a moment!");
+
+    let userMsg = 'Connection failed: ' + err.message;
+
+    if (err.message.includes('Failed to fetch') || err.message.includes('NetworkError') || err.message.includes('Load failed')) {
+      userMsg = "Network blocked — your browser won't allow API calls from a local file (file://).\n\nFix: open this folder in VS Code and use the Live Server extension — right-click index.html and choose Open with Live Server. Or use any local server like http-server.";
+    } else if (err.message.toLowerCase().includes('401') || err.message.toLowerCase().includes('auth') || err.message.toLowerCase().includes('invalid x-api-key')) {
+      userMsg = "Invalid API key — check what you pasted in script.js. Make sure there are no extra spaces. Get your key at console.anthropic.com";
+    } else if (err.message.includes('429')) {
+      userMsg = "Rate limited — too many messages. Wait a minute and try again.";
+    }
+
+    appendMessage('ai', userMsg);
   }
 
   // Unlock UI
@@ -111,17 +134,16 @@ async function sendMessage() {
 /* ── UI helpers ── */
 function appendMessage(role, text) {
   const div = document.createElement('div');
-  div.className = `msg ${role}`;
+  div.className = 'msg ' + role;
 
   const safeText = text.replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/\n/g, '<br>');
 
   if (role === 'ai') {
-    div.innerHTML = `
-      <div class="avatar ai-avatar">D</div>
-      <div class="msg-bubble">${safeText}</div>
-    `;
+    div.innerHTML =
+      '<div class="avatar ai-avatar">D</div>' +
+      '<div class="msg-bubble">' + safeText + '</div>';
   } else {
-    div.innerHTML = `<div class="msg-bubble">${safeText}</div>`;
+    div.innerHTML = '<div class="msg-bubble">' + safeText + '</div>';
   }
 
   chatMessages.appendChild(div);
@@ -129,18 +151,17 @@ function appendMessage(role, text) {
 }
 
 function showTyping() {
-  const id = `typing_${Date.now()}`;
+  const id = 'typing_' + Date.now();
   const div = document.createElement('div');
   div.className = 'msg ai';
   div.id = id;
-  div.innerHTML = `
-    <div class="avatar ai-avatar">D</div>
-    <div class="msg-bubble">
-      <span class="typing-dot"></span>
-      <span class="typing-dot"></span>
-      <span class="typing-dot"></span>
-    </div>
-  `;
+  div.innerHTML =
+    '<div class="avatar ai-avatar">D</div>' +
+    '<div class="msg-bubble">' +
+      '<span class="typing-dot"></span>' +
+      '<span class="typing-dot"></span>' +
+      '<span class="typing-dot"></span>' +
+    '</div>';
   chatMessages.appendChild(div);
   scrollToBottom();
   return id;
